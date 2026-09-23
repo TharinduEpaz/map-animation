@@ -1,7 +1,9 @@
-import * as turf from "@turf/turf";
-import { useEffect, useMemo, useRef, useState } from "react";
-import { z } from "zod";
 import { zColor } from "@remotion/zod-types";
+import * as turf from "@turf/turf";
+import * as maplibregl from "maplibre-gl";
+import { type GeoJSONSource, type Map } from "maplibre-gl";
+import "maplibre-gl/dist/maplibre-gl.css";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   AbsoluteFill,
   Easing,
@@ -10,9 +12,7 @@ import {
   useDelayRender,
   useVideoConfig,
 } from "remotion";
-import * as maplibregl from "maplibre-gl";
-import { type GeoJSONSource, type Map } from "maplibre-gl";
-import "maplibre-gl/dist/maplibre-gl.css";
+import { z } from "zod";
 
 const lngLat = z.tuple([
   z.number().min(-180).max(180).step(0.0001),
@@ -28,6 +28,7 @@ export const routeMapSchema = z.object({
   lineShape: z.enum(["curved", "straight"]),
   lineStyle: z.enum(["solid", "dashed", "dotted"]),
   vehicle: z.enum(["none", "plane", "car"]),
+  curveHeight: z.number().optional().default(0.2),
   cameraAltitudeMeters: z.object({
     start: z.number().min(1000).step(1000),
     peak: z.number().min(1000).step(1000),
@@ -40,26 +41,32 @@ export const routeMapSchema = z.object({
 
 export type RouteMapProps = z.infer<typeof routeMapSchema>;
 
-const greatCircleLine = (from: [number, number], to: [number, number]) => {
-  const route = turf.greatCircle(from, to, { npoints: 100 });
+const greatCircleLine = (from: [number, number], to: [number, number], curveHeight: number) => {
+  const line = turf.lineString([from, to]);
+  const length = turf.length(line);
+  const midpoint = turf.midpoint(from, to);
+  const bearing = turf.bearing(from, to);
 
-  if (route.geometry.type === "LineString") {
-    return turf.lineString(route.geometry.coordinates);
-  }
+  // Offset distance controls the "height" of the arc
+  const offsetDistance = length * curveHeight; 
+  // Offset it perpendicularly to create a control point
+  const controlPoint = turf.destination(midpoint, offsetDistance, bearing - 90);
 
-  const longestSegment = route.geometry.coordinates.reduce((longest, segment) => {
-    return segment.length > longest.length ? segment : longest;
-  });
-
-  return turf.lineString(longestSegment);
+  // Generate a smooth curve through the points
+  return turf.bezierSpline(turf.lineString([
+    from,
+    controlPoint.geometry.coordinates,
+    to
+  ]));
 };
 
 const routeLine = (
   from: [number, number],
   to: [number, number],
   shape: RouteMapProps["lineShape"],
+  curveHeight: number = 0.2
 ) => {
-  return shape === "straight" ? turf.lineString([from, to]) : greatCircleLine(from, to);
+  return shape === "straight" ? turf.lineString([from, to]) : greatCircleLine(from, to, curveHeight);
 };
 
 const lineDasharray = (style: RouteMapProps["lineStyle"]): number[] | undefined => {
@@ -114,6 +121,7 @@ export const RouteMap = ({
   lineShape,
   lineStyle,
   vehicle,
+  curveHeight = 0.2,
   cameraAltitudeMeters,
   cameraLatitudeOffset,
 }: RouteMapProps) => {
@@ -124,7 +132,7 @@ export const RouteMap = ({
   const [map, setMap] = useState<Map | null>(null);
   const [loadingHandle] = useState(() => delayRender("Loading MapLibre map"));
 
-  const targetRoute = useMemo(() => routeLine(from, to, lineShape), [from, to, lineShape]);
+  const targetRoute = useMemo(() => routeLine(from, to, lineShape, curveHeight), [from, to, lineShape, curveHeight]);
   const targetRouteDistance = useMemo(() => turf.length(targetRoute), [targetRoute]);
   const cameraRoute = targetRoute;
   const cameraRouteDistance = targetRouteDistance;
@@ -203,8 +211,9 @@ export const RouteMap = ({
     const mapInstance = new maplibregl.Map({
       container: containerRef.current,
       style: "https://tiles.openfreemap.org/styles/liberty",
+      projection: { type: "globe" } as any,
       center: from,
-      zoom: 7,
+      zoom: 1,
       interactive: false,
       attributionControl: false,
       fadeDuration: 0,
