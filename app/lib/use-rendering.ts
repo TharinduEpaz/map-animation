@@ -1,7 +1,6 @@
-import { z } from "zod";
 import { useCallback, useMemo, useState } from "react";
 import { getProgress, renderVideo } from "./api";
-import { CompositionProps } from "~/remotion/schemata";
+import { RouteMapProps } from "~/remotion/schemata";
 
 export type State =
   | {
@@ -35,10 +34,7 @@ const wait = async (milliSeconds: number) => {
   });
 };
 
-export const useRendering = (
-  id: string,
-  inputProps: z.infer<typeof CompositionProps>,
-) => {
+export const useRendering = (id: string, inputProps: RouteMapProps) => {
   const [state, setState] = useState<State>({
     status: "init",
   });
@@ -48,7 +44,7 @@ export const useRendering = (
       status: "invoking",
     });
     try {
-      const { renderId, bucketName } = await renderVideo({ inputProps });
+      const { renderId, bucketName } = await renderVideo({ id, inputProps });
       setState({
         status: "rendering",
         progress: 0,
@@ -100,7 +96,7 @@ export const useRendering = (
         renderId: null,
       });
     }
-  }, [inputProps]);
+  }, [id, inputProps]);
 
   const undo = useCallback(() => {
     setState({ status: "init" });

@@ -3,8 +3,7 @@ import {
   speculateFunctionName,
 } from "@remotion/lambda/client";
 import type { RenderResponse } from "./types";
-import { z } from "zod";
-import { CompositionProps } from "~/remotion/schemata";
+import { RouteMapProps } from "~/remotion/schemata";
 import { DISK, RAM, REGION, TIMEOUT } from "~/remotion/constants.mjs";
 
 export const renderVideo = async ({
@@ -16,7 +15,7 @@ export const renderVideo = async ({
 }: {
   serveUrl: string;
   composition: string;
-  inputProps: z.infer<typeof CompositionProps>;
+  inputProps: RouteMapProps;
   outName: string;
   metadata: Record<string, string> | null;
 }): Promise<RenderResponse> => {

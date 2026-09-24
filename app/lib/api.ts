@@ -1,9 +1,9 @@
 import { z } from "zod";
 import {
-  CompositionProps,
   ProgressRequest,
   ProgressResponse,
   RenderRequest,
+  RouteMapProps,
 } from "~/remotion/schemata";
 import { RenderResponse } from "./types";
 
@@ -37,11 +37,14 @@ const makeRequest = async <Res>(
 };
 
 export const renderVideo = async ({
+  id,
   inputProps,
 }: {
-  inputProps: z.infer<typeof CompositionProps>;
+  id: string;
+  inputProps: RouteMapProps;
 }) => {
   const body: z.infer<typeof RenderRequest> = {
+    id,
     inputProps,
   };
 

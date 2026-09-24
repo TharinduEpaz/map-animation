@@ -1,42 +1,56 @@
 import { Player } from "@remotion/player";
 import { useMemo, useState } from "react";
 import {
-  DURATION_IN_FRAMES,
+  ROUTE_MAP_DURATION_IN_FRAMES,
   COMPOSITION_FPS,
   COMPOSITION_HEIGHT,
   COMPOSITION_WIDTH,
 } from "./remotion/constants.mjs";
 import "./app.css";
-import { z } from "zod";
-import { Main } from "./remotion/components/Main";
+import { RouteMap } from "./remotion/components/RouteMap";
+import { Button } from "./components/Button";
 import { RenderControls } from "./components/RenderControls";
 import { Spacing } from "./components/Spacing";
 import { Tips } from "./components/Tips";
-import { CompositionProps } from "./remotion/schemata";
+import {
+  routeMapCompositions,
+  type RouteMapCompositionId,
+} from "./remotion/schemata";
 
 export default function Index() {
-  const [text, setText] = useState("React Router + Remotion");
+  const [compositionId, setCompositionId] = useState<RouteMapCompositionId>(
+    routeMapCompositions[0].id,
+  );
 
-  const inputProps: z.infer<typeof CompositionProps> = useMemo(() => {
-    return {
-      title: text,
-    };
-  }, [text]);
+  const composition = useMemo(
+    () => routeMapCompositions.find((c) => c.id === compositionId)!,
+    [compositionId],
+  );
 
   return (
     <div>
       <div className="max-w-screen-md m-auto mb-5">
-        <div className="overflow-hidden rounded-geist shadow-[0_0_200px_rgba(0,0,0,0.15)] mb-10 mt-16">
+        <div className="flex gap-2 mt-16 mb-5">
+          {routeMapCompositions.map((c) => (
+            <Button
+              key={c.id}
+              secondary={c.id !== compositionId}
+              onClick={() => setCompositionId(c.id)}
+            >
+              {c.label}
+            </Button>
+          ))}
+        </div>
+        <div className="overflow-hidden rounded-geist shadow-[0_0_200px_rgba(0,0,0,0.15)] mb-10">
           <Player
-            component={Main}
-            inputProps={inputProps}
-            durationInFrames={DURATION_IN_FRAMES}
+            key={composition.id}
+            component={RouteMap}
+            inputProps={composition.defaultProps}
+            durationInFrames={ROUTE_MAP_DURATION_IN_FRAMES}
             fps={COMPOSITION_FPS}
             compositionHeight={COMPOSITION_HEIGHT}
             compositionWidth={COMPOSITION_WIDTH}
             style={{
-              // Can't use tailwind class for width since player's default styles take presedence over tailwind's,
-              // but not over inline styles
               width: "100%",
             }}
             controls
@@ -46,15 +60,13 @@ export default function Index() {
           />
         </div>
         <RenderControls
-          text={text}
-          setText={setText}
-          inputProps={inputProps}
+          compositionId={composition.id}
+          inputProps={composition.defaultProps}
         ></RenderControls>
         <Spacing></Spacing>
         <Spacing></Spacing>
         <Spacing></Spacing>
         <Spacing></Spacing>
-        <Tips></Tips>
       </div>
     </div>
   );

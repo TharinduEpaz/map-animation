@@ -1,22 +1,21 @@
-import { z } from "zod";
 import { AlignEnd } from "./AlignEnd";
 import { Button } from "./Button";
 import { InputContainer } from "./InputContainer";
 import { DownloadButton } from "./DownloadButton";
 import { ErrorComp } from "./Error";
-import { Input } from "./Input";
 import { ProgressBar } from "./ProgressBar";
 import { Spacing } from "./Spacing";
 import { useRendering } from "../lib/use-rendering";
-import { COMPOSITION_ID } from "~/remotion/constants.mjs";
-import { CompositionProps } from "~/remotion/schemata";
+import { RouteMapProps } from "~/remotion/schemata";
 
 export const RenderControls: React.FC<{
-  text: string;
-  setText: React.Dispatch<React.SetStateAction<string>>;
-  inputProps: z.infer<typeof CompositionProps>;
-}> = ({ text, setText, inputProps }) => {
-  const { renderMedia, state, undo } = useRendering(COMPOSITION_ID, inputProps);
+  compositionId: string;
+  inputProps: RouteMapProps;
+}> = ({ compositionId, inputProps }) => {
+  const { renderMedia, state, undo } = useRendering(
+    compositionId,
+    inputProps,
+  );
 
   return (
     <InputContainer>
@@ -24,12 +23,6 @@ export const RenderControls: React.FC<{
       state.status === "invoking" ||
       state.status === "error" ? (
         <>
-          <Input
-            disabled={state.status === "invoking"}
-            setText={setText}
-            text={text}
-          ></Input>
-          <Spacing></Spacing>
           <AlignEnd>
             <Button
               disabled={state.status === "invoking"}

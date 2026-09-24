@@ -1,4 +1,3 @@
-import { zColor } from "@remotion/zod-types";
 import * as turf from "@turf/turf";
 import * as maplibregl from "maplibre-gl";
 import { type GeoJSONSource, type Map } from "maplibre-gl";
@@ -12,34 +11,7 @@ import {
   useDelayRender,
   useVideoConfig,
 } from "remotion";
-import { z } from "zod";
-
-const lngLat = z.tuple([
-  z.number().min(-180).max(180).step(0.0001),
-  z.number().min(-90).max(90).step(0.0001),
-]);
-
-export const routeMapSchema = z.object({
-  from: lngLat,
-  to: lngLat,
-  fromLabel: z.string(),
-  toLabel: z.string(),
-  lineColor: zColor(),
-  lineShape: z.enum(["curved", "straight"]),
-  lineStyle: z.enum(["solid", "dashed", "dotted"]),
-  vehicle: z.enum(["none", "plane", "car"]),
-  curveHeight: z.number().optional().default(0.2),
-  cameraAltitudeMeters: z.object({
-    start: z.number().min(1000).step(1000),
-    peak: z.number().min(1000).step(1000),
-  }),
-  cameraLatitudeOffset: z.object({
-    start: z.number().step(0.1),
-    peak: z.number().step(0.1),
-  }),
-});
-
-export type RouteMapProps = z.infer<typeof routeMapSchema>;
+import { type RouteMapProps } from "../schemata";
 
 const greatCircleLine = (from: [number, number], to: [number, number], curveHeight: number) => {
   const line = turf.lineString([from, to]);
