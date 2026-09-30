@@ -79,13 +79,29 @@ export const routeMapCompositions = [
 
 export type RouteMapCompositionId = (typeof routeMapCompositions)[number]["id"];
 
+// Scale factors relative to the 1920x1080 composition.
+export const RESOLUTION_SCALES = {
+  "720p": 2 / 3,
+  "1080p": 1,
+  "2k": 4 / 3,
+  "4k": 2,
+} as const;
+
+export const Resolution = z.enum(["720p", "1080p", "2k", "4k"]);
+export type Resolution = z.infer<typeof Resolution>;
+
 export const RenderRequest = z.object({
   id: z.string(),
   inputProps: routeMapSchema,
+  resolution: Resolution,
 });
 
 export const ProgressRequest = z.object({
   bucketName: z.string(),
+  id: z.string(),
+});
+
+export const LocalProgressRequest = z.object({
   id: z.string(),
 });
 

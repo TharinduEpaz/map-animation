@@ -11,11 +11,13 @@
   "dependencies": {
     "@react-router/node": "8.3.0",
     "@react-router/serve": "8.3.0",
+    "@remotion/bundler": "4.0.524",
     "@remotion/cli": "4.0.524",
     "@remotion/google-fonts": "4.0.524",
     "@remotion/lambda": "4.0.524",
     "@remotion/paths": "4.0.524",
     "@remotion/player": "4.0.524",
+    "@remotion/renderer": "4.0.524",
     "@remotion/shapes": "4.0.524",
     "@remotion/zod-types": "^4.0.524",
     "@tailwindcss/cli": "4.2.0",

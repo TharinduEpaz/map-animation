@@ -5,16 +5,34 @@ import { DownloadButton } from "./DownloadButton";
 import { ErrorComp } from "./Error";
 import { ProgressBar } from "./ProgressBar";
 import { Spacing } from "./Spacing";
-import { useRendering } from "../lib/use-rendering";
-import { RouteMapProps } from "~/remotion/schemata";
+import { SegmentedControl } from "./SegmentedControl";
+import { RenderMode, useRendering } from "../lib/use-rendering";
+import { Resolution, RouteMapProps } from "~/remotion/schemata";
+import { useState } from "react";
+
+const renderModes = [
+  { value: "local", label: "Local machine" },
+  { value: "lambda", label: "Cloud Render (PRO)" },
+] as const;
+
+const resolutions = [
+  { value: "720p", label: "720p" },
+  { value: "1080p", label: "1080p" },
+  { value: "2k", label: "2K" },
+  { value: "4k", label: "4K" },
+] as const;
 
 export const RenderControls: React.FC<{
   compositionId: string;
   inputProps: RouteMapProps;
 }> = ({ compositionId, inputProps }) => {
+  const [mode, setMode] = useState<RenderMode>("local");
+  const [resolution, setResolution] = useState<Resolution>("1080p");
   const { renderMedia, state, undo } = useRendering(
+    mode,
     compositionId,
     inputProps,
+    resolution,
   );
 
   return (
@@ -23,7 +41,21 @@ export const RenderControls: React.FC<{
       state.status === "invoking" ||
       state.status === "error" ? (
         <>
-          <AlignEnd>
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div className="flex flex-wrap gap-3">
+              <SegmentedControl
+                options={renderModes}
+                value={mode}
+                onChange={setMode}
+                disabled={state.status === "invoking"}
+              />
+              <SegmentedControl
+                options={resolutions}
+                value={resolution}
+                onChange={setResolution}
+                disabled={state.status === "invoking"}
+              />
+            </div>
             <Button
               disabled={state.status === "invoking"}
               loading={state.status === "invoking"}
@@ -31,7 +63,7 @@ export const RenderControls: React.FC<{
             >
               Render video
             </Button>
-          </AlignEnd>
+          </div>
           {state.status === "error" ? (
             <ErrorComp message={state.error.message}></ErrorComp>
           ) : null}

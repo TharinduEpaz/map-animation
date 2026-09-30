@@ -8,10 +8,9 @@ import {
 } from "./remotion/constants.mjs";
 import "./app.css";
 import { RouteMap } from "./remotion/components/RouteMap";
-import { Button } from "./components/Button";
+import { SegmentedControl } from "./components/SegmentedControl";
 import { RenderControls } from "./components/RenderControls";
 import { Spacing } from "./components/Spacing";
-import { Tips } from "./components/Tips";
 import {
   routeMapCompositions,
   type RouteMapCompositionId,
@@ -30,16 +29,15 @@ export default function Index() {
   return (
     <div>
       <div className="max-w-screen-md m-auto mb-5">
-        <div className="flex gap-2 mt-16 mb-5">
-          {routeMapCompositions.map((c) => (
-            <Button
-              key={c.id}
-              secondary={c.id !== compositionId}
-              onClick={() => setCompositionId(c.id)}
-            >
-              {c.label}
-            </Button>
-          ))}
+        <div className="mt-16 mb-5">
+          <SegmentedControl
+            options={routeMapCompositions.map((c) => ({
+              value: c.id,
+              label: c.label,
+            }))}
+            value={compositionId}
+            onChange={setCompositionId}
+          />
         </div>
         <div className="overflow-hidden rounded-geist shadow-[0_0_200px_rgba(0,0,0,0.15)] mb-10">
           <Player

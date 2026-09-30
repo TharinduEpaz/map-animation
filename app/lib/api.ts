@@ -1,9 +1,9 @@
 import { z } from "zod";
 import {
+  LocalProgressRequest,
   ProgressRequest,
   ProgressResponse,
   RenderRequest,
-  RouteMapProps,
 } from "~/remotion/schemata";
 import { RenderResponse } from "./types";
 
@@ -36,19 +36,20 @@ const makeRequest = async <Res>(
   return json.data;
 };
 
-export const renderVideo = async ({
-  id,
-  inputProps,
-}: {
-  id: string;
-  inputProps: RouteMapProps;
-}) => {
-  const body: z.infer<typeof RenderRequest> = {
-    id,
-    inputProps,
-  };
-
+export const renderVideo = async (body: z.infer<typeof RenderRequest>) => {
   return makeRequest<RenderResponse>("/api/lambda/render", body);
+};
+
+export const renderVideoLocal = async (
+  body: z.infer<typeof RenderRequest>,
+) => {
+  return makeRequest<{ renderId: string }>("/api/local/render", body);
+};
+
+export const getLocalProgress = async ({ id }: { id: string }) => {
+  const body: z.infer<typeof LocalProgressRequest> = { id };
+
+  return makeRequest<ProgressResponse>("/api/local/progress", body);
 };
 
 export const getProgress = async ({

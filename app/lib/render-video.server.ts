@@ -10,12 +10,14 @@ export const renderVideo = async ({
   serveUrl,
   composition,
   inputProps,
+  scale,
   outName,
   metadata,
 }: {
   serveUrl: string;
   composition: string;
   inputProps: RouteMapProps;
+  scale: number;
   outName: string;
   metadata: Record<string, string> | null;
 }): Promise<RenderResponse> => {
@@ -46,6 +48,7 @@ export const renderVideo = async ({
     serveUrl,
     composition,
     inputProps,
+    scale,
     codec: "h264",
     downloadBehavior: {
       type: "download",
