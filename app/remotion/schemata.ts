@@ -101,10 +101,6 @@ export const ProgressRequest = z.object({
   id: z.string(),
 });
 
-export const LocalProgressRequest = z.object({
-  id: z.string(),
-});
-
 export type ProgressResponse =
   | {
       type: "error";

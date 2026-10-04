@@ -1,19 +1,21 @@
-import { useCallback, useMemo, useState } from "react";
+import { renderMediaOnWeb } from "@remotion/web-renderer";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { getProgress, renderVideo } from "./api";
+import { RouteMap } from "~/remotion/components/RouteMap";
 import {
-  getLocalProgress,
-  getProgress,
-  renderVideo,
-  renderVideoLocal,
-} from "./api";
-import { z } from "zod";
+  COMPOSITION_FPS,
+  COMPOSITION_HEIGHT,
+  COMPOSITION_WIDTH,
+  ROUTE_MAP_DURATION_IN_FRAMES,
+} from "~/remotion/constants.mjs";
 import {
-  ProgressResponse,
-  RenderRequest,
   Resolution,
+  RESOLUTION_SCALES,
   RouteMapProps,
+  routeMapSchema,
 } from "~/remotion/schemata";
 
-export type RenderMode = "local" | "lambda";
+export type RenderMode = "browser" | "lambda";
 
 export type State =
   | {
@@ -23,12 +25,10 @@ export type State =
       status: "invoking";
     }
   | {
-      renderId: string;
       progress: number;
       status: "rendering";
     }
   | {
-      renderId: string | null;
       status: "error";
       error: Error;
     }
@@ -46,89 +46,135 @@ const wait = async (milliSeconds: number) => {
   });
 };
 
-const startRender = async (
-  mode: RenderMode,
-  request: z.infer<typeof RenderRequest>,
-): Promise<{ renderId: string; poll: () => Promise<ProgressResponse> }> => {
-  if (mode === "local") {
-    const { renderId } = await renderVideoLocal(request);
-    return { renderId, poll: () => getLocalProgress({ id: renderId }) };
-  }
-
-  const { renderId, bucketName } = await renderVideo(request);
-  return { renderId, poll: () => getProgress({ id: renderId, bucketName }) };
+type RenderArgs = {
+  id: string;
+  inputProps: RouteMapProps;
+  resolution: Resolution;
+  licenseKey: string | null;
+  signal: AbortSignal;
+  setState: (state: State) => void;
 };
 
-export const useRendering = (
-  mode: RenderMode,
-  id: string,
-  inputProps: RouteMapProps,
-  resolution: Resolution,
-) => {
+const renderInBrowser = async ({
+  id,
+  inputProps,
+  resolution,
+  licenseKey,
+  signal,
+  setState,
+}: RenderArgs) => {
+  setState({ status: "rendering", progress: 0 });
+  const { getBlob } = await renderMediaOnWeb({
+    composition: {
+      id,
+      component: RouteMap,
+      width: COMPOSITION_WIDTH,
+      height: COMPOSITION_HEIGHT,
+      fps: COMPOSITION_FPS,
+      durationInFrames: ROUTE_MAP_DURATION_IN_FRAMES,
+      defaultProps: inputProps,
+    },
+    schema: routeMapSchema,
+    inputProps,
+    scale: RESOLUTION_SCALES[resolution],
+    container: "mp4",
+    muted: true,
+    // Map tiles can take a while to arrive on slow connections.
+    delayRenderTimeoutInMilliseconds: 120_000,
+    licenseKey,
+    signal,
+    onProgress: ({ progress }) => setState({ status: "rendering", progress }),
+  });
+  const blob = await getBlob();
+  setState({ status: "done", url: URL.createObjectURL(blob), size: blob.size });
+};
+
+const renderOnLambda = async ({
+  id,
+  inputProps,
+  resolution,
+  signal,
+  setState,
+}: RenderArgs) => {
+  const { renderId, bucketName } = await renderVideo({
+    id,
+    inputProps,
+    resolution,
+  });
+  setState({ status: "rendering", progress: 0 });
+
+  while (!signal.aborted) {
+    const result = await getProgress({ id: renderId, bucketName });
+    if (result.type === "error") {
+      throw new Error(result.message);
+    }
+
+    if (result.type === "done") {
+      setState({ status: "done", url: result.url, size: result.size });
+      return;
+    }
+
+    setState({ status: "rendering", progress: result.progress });
+    await wait(1000);
+  }
+};
+
+export const useRendering = ({
+  mode,
+  id,
+  inputProps,
+  resolution,
+  licenseKey,
+}: {
+  mode: RenderMode;
+  id: string;
+  inputProps: RouteMapProps;
+  resolution: Resolution;
+  licenseKey: string | null;
+}) => {
   const [state, setState] = useState<State>({
     status: "init",
   });
+  const abortRef = useRef<AbortController | null>(null);
+
+  useEffect(() => () => abortRef.current?.abort(), []);
 
   const renderMedia = useCallback(async () => {
-    setState({
-      status: "invoking",
-    });
+    abortRef.current?.abort();
+    const controller = new AbortController();
+    abortRef.current = controller;
+
+    const update = (next: State) => {
+      if (!controller.signal.aborted) {
+        setState(next);
+      }
+    };
+
+    update({ status: "invoking" });
     try {
-      const { renderId, poll } = await startRender(mode, {
+      const render = mode === "browser" ? renderInBrowser : renderOnLambda;
+      await render({
         id,
         inputProps,
         resolution,
+        licenseKey,
+        signal: controller.signal,
+        setState: update,
       });
-      setState({
-        status: "rendering",
-        progress: 0,
-        renderId: renderId,
-      });
-
-      let pending = true;
-
-      while (pending) {
-        const result = await poll();
-        switch (result.type) {
-          case "error": {
-            setState({
-              status: "error",
-              renderId: renderId,
-              error: new Error(result.message),
-            });
-            pending = false;
-            break;
-          }
-          case "done": {
-            setState({
-              size: result.size,
-              url: result.url,
-              status: "done",
-            });
-            pending = false;
-            break;
-          }
-          case "progress": {
-            setState({
-              status: "rendering",
-              progress: result.progress,
-              renderId: renderId,
-            });
-            await wait(1000);
-          }
-        }
-      }
     } catch (err) {
-      setState({
-        status: "error",
-        error: err as Error,
-        renderId: null,
-      });
+      update({ status: "error", error: err as Error });
     }
-  }, [mode, id, inputProps, resolution]);
+  }, [mode, id, inputProps, resolution, licenseKey]);
 
   const undo = useCallback(() => {
-    setState({ status: "init" });
+    abortRef.current?.abort();
+    setState((prev) => {
+      if (prev.status === "done" && prev.url.startsWith("blob:")) {
+        URL.revokeObjectURL(prev.url);
+      }
+
+      return { status: "init" };
+    });
   }, []);
 
   return useMemo(() => {

@@ -18,10 +18,14 @@ import {
 } from "./remotion/schemata";
 import { isCloudRenderEnabled } from "./lib/feature-flags.server";
 
-export const loader = () => ({ cloudRenderEnabled: isCloudRenderEnabled() });
+export const loader = () => ({
+  cloudRenderEnabled: isCloudRenderEnabled(),
+  remotionLicenseKey: process.env.REMOTION_LICENSE_KEY || null,
+});
 
 export default function Index() {
-  const { cloudRenderEnabled } = useLoaderData<typeof loader>();
+  const { cloudRenderEnabled, remotionLicenseKey } =
+    useLoaderData<typeof loader>();
   const [compositionId, setCompositionId] = useState<RouteMapCompositionId>(
     routeMapCompositions[0].id,
   );
@@ -66,6 +70,7 @@ export default function Index() {
           compositionId={composition.id}
           inputProps={composition.defaultProps}
           cloudRenderEnabled={cloudRenderEnabled}
+          licenseKey={remotionLicenseKey}
         ></RenderControls>
         <Spacing></Spacing>
         <Spacing></Spacing>

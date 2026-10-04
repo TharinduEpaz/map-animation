@@ -11,7 +11,7 @@ import { Resolution, RouteMapProps } from "~/remotion/schemata";
 import { useState } from "react";
 
 const renderModes = [
-  { value: "local", label: "Local machine" },
+  { value: "browser", label: "Local machine" },
   { value: "lambda", label: "Cloud Render (PRO)" },
 ] as const;
 
@@ -26,15 +26,17 @@ export const RenderControls: React.FC<{
   compositionId: string;
   inputProps: RouteMapProps;
   cloudRenderEnabled: boolean;
-}> = ({ compositionId, inputProps, cloudRenderEnabled }) => {
-  const [mode, setMode] = useState<RenderMode>("local");
+  licenseKey: string | null;
+}> = ({ compositionId, inputProps, cloudRenderEnabled, licenseKey }) => {
+  const [mode, setMode] = useState<RenderMode>("browser");
   const [resolution, setResolution] = useState<Resolution>("1080p");
-  const { renderMedia, state, undo } = useRendering(
+  const { renderMedia, state, undo } = useRendering({
     mode,
-    compositionId,
+    id: compositionId,
     inputProps,
     resolution,
-  );
+    licenseKey,
+  });
 
   return (
     <InputContainer>
