@@ -25,7 +25,8 @@ const resolutions = [
 export const RenderControls: React.FC<{
   compositionId: string;
   inputProps: RouteMapProps;
-}> = ({ compositionId, inputProps }) => {
+  cloudRenderEnabled: boolean;
+}> = ({ compositionId, inputProps, cloudRenderEnabled }) => {
   const [mode, setMode] = useState<RenderMode>("local");
   const [resolution, setResolution] = useState<Resolution>("1080p");
   const { renderMedia, state, undo } = useRendering(
@@ -43,12 +44,14 @@ export const RenderControls: React.FC<{
         <>
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div className="flex flex-wrap gap-3">
-              <SegmentedControl
-                options={renderModes}
-                value={mode}
-                onChange={setMode}
-                disabled={state.status === "invoking"}
-              />
+              {cloudRenderEnabled ? (
+                <SegmentedControl
+                  options={renderModes}
+                  value={mode}
+                  onChange={setMode}
+                  disabled={state.status === "invoking"}
+                />
+              ) : null}
               <SegmentedControl
                 options={resolutions}
                 value={resolution}

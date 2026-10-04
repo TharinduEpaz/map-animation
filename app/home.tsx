@@ -1,5 +1,6 @@
 import { Player } from "@remotion/player";
 import { useMemo, useState } from "react";
+import { useLoaderData } from "react-router";
 import {
   ROUTE_MAP_DURATION_IN_FRAMES,
   COMPOSITION_FPS,
@@ -15,8 +16,12 @@ import {
   routeMapCompositions,
   type RouteMapCompositionId,
 } from "./remotion/schemata";
+import { isCloudRenderEnabled } from "./lib/feature-flags.server";
+
+export const loader = () => ({ cloudRenderEnabled: isCloudRenderEnabled() });
 
 export default function Index() {
+  const { cloudRenderEnabled } = useLoaderData<typeof loader>();
   const [compositionId, setCompositionId] = useState<RouteMapCompositionId>(
     routeMapCompositions[0].id,
   );
@@ -52,14 +57,15 @@ export default function Index() {
               width: "100%",
             }}
             controls
-            autoPlay
-            loop
+            autoPlay={false}
+            loop={false}
             initiallyMuted
           />
         </div>
         <RenderControls
           compositionId={composition.id}
           inputProps={composition.defaultProps}
+          cloudRenderEnabled={cloudRenderEnabled}
         ></RenderControls>
         <Spacing></Spacing>
         <Spacing></Spacing>

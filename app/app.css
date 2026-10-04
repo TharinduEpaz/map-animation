@@ -1,4 +1,8 @@
 @import "tailwindcss";
+@import "@fontsource/inter/400.css";
+@import "@fontsource/inter/500.css";
+@import "@fontsource/inter/600.css";
+@import "@fontsource/inter/700.css";
 
 :root {
   --background: #fff;
@@ -13,7 +17,7 @@
   --geist-quarter-pad: 6px;
   --geist-half-pad: 12px;
   --geist-pad: 24px;
-  --geist-font: "Inter";
+  --geist-font: "Inter", ui-sans-serif, system-ui, sans-serif;
 
   --geist-error: #e00;
 
@@ -49,6 +53,7 @@
   --spacing-geist-quarter: var(--geist-quarter-pad);
   --radius-geist: var(--geist-border-radius);
   --font-geist: var(--geist-font);
+  --font-sans: var(--geist-font);
   --animate-spinner: spinner 1.2s linear infinite;
 
   @keyframes spinner {

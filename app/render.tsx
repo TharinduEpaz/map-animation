@@ -2,9 +2,14 @@ import { ActionFunction } from "react-router";
 import { renderVideo } from "./lib/render-video.server";
 import { SITE_NAME } from "./remotion/constants.mjs";
 import { errorAsJson } from "./lib/return-error-as-json";
+import { isCloudRenderEnabled } from "./lib/feature-flags.server";
 import { RenderRequest, RESOLUTION_SCALES } from "./remotion/schemata";
 
 export const action: ActionFunction = errorAsJson(async ({ request }) => {
+  if (!isCloudRenderEnabled()) {
+    throw new Error("Cloud rendering is disabled.");
+  }
+
   const formData = await request.json();
   const { id, inputProps, resolution } = RenderRequest.parse(formData);
 

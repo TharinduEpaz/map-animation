@@ -29,8 +29,8 @@ export function SegmentedControl<T extends string>({
             className={cn(
               "h-8 rounded-geist px-geist-half font-geist text-sm font-medium transition-colors duration-150 disabled:cursor-not-allowed disabled:opacity-50",
               selected
-                ? "bg-foreground text-background"
-                : "text-foreground/60 hover:text-foreground",
+                ? "bg-blue-500 text-white"
+                : "text-foreground/60 hover:bg-gray-200 text-blue-500",
             )}
           >
             {option.label}

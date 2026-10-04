@@ -12,6 +12,7 @@ import {
   useVideoConfig,
 } from "remotion";
 import { type RouteMapProps } from "../schemata";
+import { INTER_LABEL_FONT, interFontFaces } from "../map-fonts";
 
 const greatCircleLine = (from: [number, number], to: [number, number], curveHeight: number) => {
   const line = turf.lineString([from, to]);
@@ -182,7 +183,6 @@ export const RouteMap = ({
 
     const mapInstance = new maplibregl.Map({
       container: containerRef.current,
-      style: "https://tiles.openfreemap.org/styles/liberty",
       projection: { type: "globe" } as any,
       center: from,
       zoom: 1,
@@ -192,6 +192,13 @@ export const RouteMap = ({
       canvasContextAttributes: {
         preserveDrawingBuffer: true,
       },
+    });
+
+    mapInstance.setStyle("https://tiles.openfreemap.org/styles/liberty", {
+      transformStyle: (_previous, next) => ({
+        ...next,
+        "font-faces": interFontFaces,
+      }),
     });
 
     mapInstance.on("load", async () => {
@@ -249,6 +256,7 @@ export const RouteMap = ({
           "text-allow-overlap": true,
           "text-anchor": "top",
           "text-field": ["get", "name"],
+          "text-font": [INTER_LABEL_FONT],
           "text-offset": [0, 0.9],
           "text-size": 28,
         },
