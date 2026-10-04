@@ -70,7 +70,21 @@ const carSvg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
   <rect x="24" y="34" width="16" height="14" rx="3" fill="#ffffff"/>
 </svg>`;
 
-const svgToDataUrl = (svg: string) => `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`;
+const startWorkerTicker = (intervalMs: number, onTick: () => void) => {
+  const url = URL.createObjectURL(
+    new Blob([`setInterval(() => postMessage(0), ${intervalMs});`], {
+      type: "text/javascript",
+    }),
+  );
+  const worker = new Worker(url);
+  worker.onmessage = onTick;
+  return () => {
+    worker.terminate();
+    URL.revokeObjectURL(url);
+  };
+};
+
+const svgToDataUrl =(svg: string) => `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`;
 
 const loadIcon = (svg: string): Promise<HTMLImageElement> => {
   return new Promise((resolve, reject) => {
@@ -104,6 +118,7 @@ export const RouteMap = ({
   const { durationInFrames, height, width } = useVideoConfig();
   const [map, setMap] = useState<Map | null>(null);
   const [loadingHandle] = useState(() => delayRender("Loading MapLibre map"));
+  const waitingForIdleRef = useRef(true);
 
   const targetRoute = useMemo(() => routeLine(from, to, lineShape, curveHeight), [from, to, lineShape, curveHeight]);
   const targetRouteDistance = useMemo(() => turf.length(targetRoute), [targetRoute]);
@@ -181,6 +196,7 @@ export const RouteMap = ({
       ),
     );
 
+    let removed = false;
     const mapInstance = new maplibregl.Map({
       container: containerRef.current,
       projection: { type: "globe" } as any,
@@ -206,6 +222,10 @@ export const RouteMap = ({
         loadIcon(planeSvg),
         loadIcon(carSvg),
       ]);
+      if (removed) {
+        return;
+      }
+
       mapInstance.addImage("plane-icon", planeImage);
       mapInstance.addImage("car-icon", carImage);
 
@@ -291,10 +311,25 @@ export const RouteMap = ({
         getCameraOptions(mapInstance, 0, cameraAltitudeMeters.start, cameraLatitudeOffset.start),
       );
       mapInstance.once("idle", () => {
+        waitingForIdleRef.current = false;
         setMap(mapInstance);
         continueRender(loadingHandle);
       });
     });
+
+    // Hidden tabs pause requestAnimationFrame, so MapLibre never reaches "idle" and the
+    // render stalls. Worker timers keep firing in the background; use them to redraw by hand.
+    const stopTicker = startWorkerTicker(50, () => {
+      if (document.hidden && waitingForIdleRef.current) {
+        mapInstance.redraw();
+      }
+    });
+
+    return () => {
+      removed = true;
+      stopTicker();
+      mapInstance.remove();
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [continueRender, loadingHandle]);
 
@@ -367,7 +402,11 @@ export const RouteMap = ({
     vehicleSource?.setData(getVehicleFeature(travelProgress));
     map.jumpTo(getCameraOptions(map, travelProgress, altitudeMeters, latitudeOffset));
 
-    map.once("idle", () => continueRender(handle));
+    waitingForIdleRef.current = true;
+    map.once("idle", () => {
+      waitingForIdleRef.current = false;
+      continueRender(handle);
+    });
     map.triggerRepaint();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [continueRender, delayRender, durationInFrames, frame, map, targetRoute]);

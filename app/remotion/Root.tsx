@@ -3,10 +3,10 @@ import {
   COMPOSITION_FPS,
   COMPOSITION_HEIGHT,
   COMPOSITION_WIDTH,
-  ROUTE_MAP_DURATION_IN_FRAMES,
+  routeMapDurationInFrames,
 } from "./constants.mjs";
 import { RouteMap } from "./components/RouteMap";
-import { routeMapCompositions, routeMapSchema } from "./schemata";
+import { routeMapCompositions, routeMapRenderSchema } from "./schemata";
 
 export const RemotionRoot = () => {
   return (
@@ -16,12 +16,16 @@ export const RemotionRoot = () => {
           key={composition.id}
           id={composition.id}
           component={RouteMap}
-          schema={routeMapSchema}
-          durationInFrames={ROUTE_MAP_DURATION_IN_FRAMES}
+          schema={routeMapRenderSchema}
+          durationInFrames={routeMapDurationInFrames(COMPOSITION_FPS)}
           fps={COMPOSITION_FPS}
           width={COMPOSITION_WIDTH}
           height={COMPOSITION_HEIGHT}
           defaultProps={composition.defaultProps}
+          calculateMetadata={({ props }) => {
+            const fps = props.fps ?? COMPOSITION_FPS;
+            return { fps, durationInFrames: routeMapDurationInFrames(fps) };
+          }}
         />
       ))}
     </>

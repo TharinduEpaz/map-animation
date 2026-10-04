@@ -7,7 +7,12 @@ import { ProgressBar } from "./ProgressBar";
 import { Spacing } from "./Spacing";
 import { SegmentedControl } from "./SegmentedControl";
 import { RenderMode, useRendering } from "../lib/use-rendering";
-import { Resolution, RouteMapProps } from "~/remotion/schemata";
+import {
+  Fps,
+  FPS_OPTIONS,
+  Resolution,
+  RouteMapProps,
+} from "~/remotion/schemata";
 import { useState } from "react";
 
 const renderModes = [
@@ -27,7 +32,16 @@ export const RenderControls: React.FC<{
   inputProps: RouteMapProps;
   cloudRenderEnabled: boolean;
   licenseKey: string | null;
-}> = ({ compositionId, inputProps, cloudRenderEnabled, licenseKey }) => {
+  fps: Fps;
+  onFpsChange: (fps: Fps) => void;
+}> = ({
+  compositionId,
+  inputProps,
+  cloudRenderEnabled,
+  licenseKey,
+  fps,
+  onFpsChange,
+}) => {
   const [mode, setMode] = useState<RenderMode>("browser");
   const [resolution, setResolution] = useState<Resolution>("1080p");
   const { renderMedia, state, undo } = useRendering({
@@ -35,6 +49,7 @@ export const RenderControls: React.FC<{
     id: compositionId,
     inputProps,
     resolution,
+    fps,
     licenseKey,
   });
 
@@ -58,6 +73,12 @@ export const RenderControls: React.FC<{
                 options={resolutions}
                 value={resolution}
                 onChange={setResolution}
+                disabled={state.status === "invoking"}
+              />
+              <SegmentedControl
+                options={FPS_OPTIONS}
+                value={fps}
+                onChange={onFpsChange}
                 disabled={state.status === "invoking"}
               />
             </div>

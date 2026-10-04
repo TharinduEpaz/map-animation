@@ -1,6 +1,6 @@
 import { cn } from "~/lib/utils";
 
-export function SegmentedControl<T extends string>({
+export function SegmentedControl<T extends string | number>({
   options,
   value,
   onChange,

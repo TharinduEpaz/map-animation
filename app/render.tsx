@@ -11,12 +11,12 @@ export const action: ActionFunction = errorAsJson(async ({ request }) => {
   }
 
   const formData = await request.json();
-  const { id, inputProps, resolution } = RenderRequest.parse(formData);
+  const { id, inputProps, resolution, fps } = RenderRequest.parse(formData);
 
   const renderData = await renderVideo({
     serveUrl: SITE_NAME,
     composition: id,
-    inputProps,
+    inputProps: { ...inputProps, fps },
     scale: RESOLUTION_SCALES[resolution],
     outName: `map-animation.mp4`,
     metadata: null,

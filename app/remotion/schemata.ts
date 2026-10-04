@@ -90,10 +90,26 @@ export const RESOLUTION_SCALES = {
 export const Resolution = z.enum(["720p", "1080p", "2k", "4k"]);
 export type Resolution = z.infer<typeof Resolution>;
 
+export const Fps = z.union([z.literal(24), z.literal(30), z.literal(60)]);
+export type Fps = z.infer<typeof Fps>;
+
+export const FPS_OPTIONS = [
+  { value: 24, label: "24 fps" },
+  { value: 30, label: "30 fps" },
+  { value: 60, label: "60 fps" },
+] as const satisfies readonly { value: Fps; label: string }[];
+
+// Composition-level props: `fps` drives calculateMetadata, RouteMap ignores it.
+export const routeMapRenderSchema = routeMapSchema.extend({
+  fps: Fps.optional(),
+});
+export type RouteMapRenderProps = z.infer<typeof routeMapRenderSchema>;
+
 export const RenderRequest = z.object({
   id: z.string(),
   inputProps: routeMapSchema,
   resolution: Resolution,
+  fps: Fps,
 });
 
 export const ProgressRequest = z.object({

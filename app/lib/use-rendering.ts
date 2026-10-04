@@ -3,12 +3,12 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { getProgress, renderVideo } from "./api";
 import { RouteMap } from "~/remotion/components/RouteMap";
 import {
-  COMPOSITION_FPS,
   COMPOSITION_HEIGHT,
   COMPOSITION_WIDTH,
-  ROUTE_MAP_DURATION_IN_FRAMES,
+  routeMapDurationInFrames,
 } from "~/remotion/constants.mjs";
 import {
+  Fps,
   Resolution,
   RESOLUTION_SCALES,
   RouteMapProps,
@@ -50,6 +50,7 @@ type RenderArgs = {
   id: string;
   inputProps: RouteMapProps;
   resolution: Resolution;
+  fps: Fps;
   licenseKey: string | null;
   signal: AbortSignal;
   setState: (state: State) => void;
@@ -59,6 +60,7 @@ const renderInBrowser = async ({
   id,
   inputProps,
   resolution,
+  fps,
   licenseKey,
   signal,
   setState,
@@ -70,8 +72,8 @@ const renderInBrowser = async ({
       component: RouteMap,
       width: COMPOSITION_WIDTH,
       height: COMPOSITION_HEIGHT,
-      fps: COMPOSITION_FPS,
-      durationInFrames: ROUTE_MAP_DURATION_IN_FRAMES,
+      fps,
+      durationInFrames: routeMapDurationInFrames(fps),
       defaultProps: inputProps,
     },
     schema: routeMapSchema,
@@ -93,6 +95,7 @@ const renderOnLambda = async ({
   id,
   inputProps,
   resolution,
+  fps,
   signal,
   setState,
 }: RenderArgs) => {
@@ -100,6 +103,7 @@ const renderOnLambda = async ({
     id,
     inputProps,
     resolution,
+    fps,
   });
   setState({ status: "rendering", progress: 0 });
 
@@ -124,12 +128,14 @@ export const useRendering = ({
   id,
   inputProps,
   resolution,
+  fps,
   licenseKey,
 }: {
   mode: RenderMode;
   id: string;
   inputProps: RouteMapProps;
   resolution: Resolution;
+  fps: Fps;
   licenseKey: string | null;
 }) => {
   const [state, setState] = useState<State>({
@@ -157,6 +163,7 @@ export const useRendering = ({
         id,
         inputProps,
         resolution,
+        fps,
         licenseKey,
         signal: controller.signal,
         setState: update,
@@ -164,7 +171,7 @@ export const useRendering = ({
     } catch (err) {
       update({ status: "error", error: err as Error });
     }
-  }, [mode, id, inputProps, resolution, licenseKey]);
+  }, [mode, id, inputProps, resolution, fps, licenseKey]);
 
   const undo = useCallback(() => {
     abortRef.current?.abort();

@@ -2,10 +2,10 @@ import { Player } from "@remotion/player";
 import { useMemo, useState } from "react";
 import { useLoaderData } from "react-router";
 import {
-  ROUTE_MAP_DURATION_IN_FRAMES,
   COMPOSITION_FPS,
   COMPOSITION_HEIGHT,
   COMPOSITION_WIDTH,
+  routeMapDurationInFrames,
 } from "./remotion/constants.mjs";
 import "./app.css";
 import { RouteMap } from "./remotion/components/RouteMap";
@@ -14,6 +14,7 @@ import { RenderControls } from "./components/RenderControls";
 import { Spacing } from "./components/Spacing";
 import {
   routeMapCompositions,
+  type Fps,
   type RouteMapCompositionId,
 } from "./remotion/schemata";
 import { isCloudRenderEnabled } from "./lib/feature-flags.server";
@@ -29,6 +30,7 @@ export default function Index() {
   const [compositionId, setCompositionId] = useState<RouteMapCompositionId>(
     routeMapCompositions[0].id,
   );
+  const [fps, setFps] = useState<Fps>(COMPOSITION_FPS);
 
   const composition = useMemo(
     () => routeMapCompositions.find((c) => c.id === compositionId)!,
@@ -50,11 +52,11 @@ export default function Index() {
         </div>
         <div className="overflow-hidden rounded-geist shadow-[0_0_200px_rgba(0,0,0,0.15)] mb-10">
           <Player
-            key={composition.id}
+            key={`${composition.id}-${fps}`}
             component={RouteMap}
             inputProps={composition.defaultProps}
-            durationInFrames={ROUTE_MAP_DURATION_IN_FRAMES}
-            fps={COMPOSITION_FPS}
+            durationInFrames={routeMapDurationInFrames(fps)}
+            fps={fps}
             compositionHeight={COMPOSITION_HEIGHT}
             compositionWidth={COMPOSITION_WIDTH}
             style={{
@@ -71,6 +73,8 @@ export default function Index() {
           inputProps={composition.defaultProps}
           cloudRenderEnabled={cloudRenderEnabled}
           licenseKey={remotionLicenseKey}
+          fps={fps}
+          onFpsChange={setFps}
         ></RenderControls>
         <Spacing></Spacing>
         <Spacing></Spacing>
