@@ -40,6 +40,7 @@ export const routeMapCompositions = [
   {
     id: "CountryToCountry",
     label: "Country to Country",
+    searchKind: "country",
     defaultProps: {
       from: [-74.006, 40.7128],
       to: [-0.1276, 51.5072],
@@ -57,6 +58,7 @@ export const routeMapCompositions = [
   {
     id: "CityToCity",
     label: "Between Cities",
+    searchKind: "city",
     defaultProps: {
       from: [79.8627, 6.9271],
       to: [80.8917, 6.4372],
@@ -74,6 +76,7 @@ export const routeMapCompositions = [
 ] as const satisfies readonly {
   id: string;
   label: string;
+  searchKind: "country" | "city";
   defaultProps: RouteMapProps;
 }[];
 
