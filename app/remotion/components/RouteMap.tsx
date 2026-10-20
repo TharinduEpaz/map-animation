@@ -64,10 +64,23 @@ const planeSvg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
   <path d="M32 2 L38 24 L60 34 L60 40 L38 34 L38 46 L48 54 L48 60 L32 54 L16 60 L16 54 L26 46 L26 34 L4 40 L4 34 L26 24 Z" fill="#111111" stroke="#ffffff" stroke-width="2"/>
 </svg>`;
 
-const carSvg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
-  <rect x="20" y="8" width="24" height="48" rx="8" fill="#111111" stroke="#ffffff" stroke-width="2"/>
-  <rect x="24" y="14" width="16" height="14" rx="3" fill="#ffffff"/>
-  <rect x="24" y="34" width="16" height="14" rx="3" fill="#ffffff"/>
+// Top-down car, with its hood pointing north to match the route bearing.
+const carSvg = `<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64">
+  <g fill="#17212b" stroke="#ffffff" stroke-width="1.5">
+    <rect x="15" y="14" width="7" height="12" rx="2.5"/>
+    <rect x="42" y="14" width="7" height="12" rx="2.5"/>
+    <rect x="15" y="42" width="7" height="12" rx="2.5"/>
+    <rect x="42" y="42" width="7" height="12" rx="2.5"/>
+  </g>
+  <path d="M23 4 Q32 1 41 4 Q46 7 46 16 L46 48 Q46 59 40 60 L24 60 Q18 59 18 48 L18 16 Q18 7 23 4Z" fill="#2563eb" stroke="#ffffff" stroke-width="2"/>
+  <path d="M24 8 Q32 5 40 8 L41 16 L23 16Z" fill="#60a5fa"/>
+  <path d="M23 20 Q32 17 41 20 L39 30 L25 30Z" fill="#172b46" stroke="#bfdbfe" stroke-width="1"/>
+  <path d="M21 25 L24 33 L24 43 L21 47Z M43 25 L40 33 L40 43 L43 47Z" fill="#172b46"/>
+  <rect x="26" y="32" width="12" height="12" rx="2" fill="#60a5fa"/>
+  <path d="M25 46 L39 46 L41 53 Q32 56 23 53Z" fill="#172b46" stroke="#bfdbfe" stroke-width="1"/>
+  <path d="M18 23 L13 25 L13 29 L18 28 M46 23 L51 25 L51 29 L46 28" fill="#2563eb" stroke="#ffffff" stroke-width="1.5" stroke-linejoin="round"/>
+  <path d="M22 9 L25 8 M39 8 L42 9" stroke="#fef3c7" stroke-width="3" stroke-linecap="round"/>
+  <path d="M22 56 L26 57 M38 57 L42 56" stroke="#fb7185" stroke-width="2.5" stroke-linecap="round"/>
 </svg>`;
 
 const startWorkerTicker = (intervalMs: number, onTick: () => void) => {
