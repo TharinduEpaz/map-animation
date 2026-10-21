@@ -14,35 +14,54 @@ import {
 import { type RouteMapProps } from "../schemata";
 import { INTER_LABEL_FONT, interFontFaces } from "../map-fonts";
 
-const greatCircleLine = (from: [number, number], to: [number, number], curveHeight: number) => {
+const unwrapCoordinate = (
+  coordinate: [number, number],
+  referenceLongitude: number,
+): [number, number] => [
+  coordinate[0] + 360 * Math.round((referenceLongitude - coordinate[0]) / 360),
+  coordinate[1],
+];
+
+const greatCircleLine = (
+  from: [number, number],
+  to: [number, number],
+  curveHeight: number,
+) => {
   const line = turf.lineString([from, to]);
   const length = turf.length(line);
   const midpoint = turf.midpoint(from, to);
   const bearing = turf.bearing(from, to);
 
   // Offset distance controls the "height" of the arc
-  const offsetDistance = length * curveHeight; 
+  const offsetDistance = length * curveHeight;
   // Offset it perpendicularly to create a control point
   const controlPoint = turf.destination(midpoint, offsetDistance, bearing - 90);
+  // The spline interpolates longitude numerically. Keep all three points in the
+  // same world copy so a Pacific crossing cannot turn into a near-global detour.
+  const unwrappedControlPoint = unwrapCoordinate(
+    controlPoint.geometry.coordinates as [number, number],
+    (from[0] + to[0]) / 2,
+  );
 
   // Generate a smooth curve through the points
-  return turf.bezierSpline(turf.lineString([
-    from,
-    controlPoint.geometry.coordinates,
-    to
-  ]));
+  return turf.bezierSpline(turf.lineString([from, unwrappedControlPoint, to]));
 };
 
 const routeLine = (
   from: [number, number],
   to: [number, number],
   shape: RouteMapProps["lineShape"],
-  curveHeight: number = 0.2
+  curveHeight: number = 0.2,
 ) => {
-  return shape === "straight" ? turf.lineString([from, to]) : greatCircleLine(from, to, curveHeight);
+  const unwrappedTo = unwrapCoordinate(to, from[0]);
+  return shape === "straight"
+    ? turf.lineString([from, unwrappedTo])
+    : greatCircleLine(from, unwrappedTo, curveHeight);
 };
 
-const lineDasharray = (style: RouteMapProps["lineStyle"]): number[] | undefined => {
+const lineDasharray = (
+  style: RouteMapProps["lineStyle"],
+): number[] | undefined => {
   if (style === "dashed") {
     return [3, 2];
   }
@@ -97,7 +116,8 @@ const startWorkerTicker = (intervalMs: number, onTick: () => void) => {
   };
 };
 
-const svgToDataUrl =(svg: string) => `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`;
+const svgToDataUrl = (svg: string) =>
+  `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`;
 
 const loadIcon = (svg: string): Promise<HTMLImageElement> => {
   return new Promise((resolve, reject) => {
@@ -133,8 +153,14 @@ export const RouteMap = ({
   const [loadingHandle] = useState(() => delayRender("Loading MapLibre map"));
   const waitingForIdleRef = useRef(true);
 
-  const targetRoute = useMemo(() => routeLine(from, to, lineShape, curveHeight), [from, to, lineShape, curveHeight]);
-  const targetRouteDistance = useMemo(() => turf.length(targetRoute), [targetRoute]);
+  const targetRoute = useMemo(
+    () => routeLine(from, to, lineShape, curveHeight),
+    [from, to, lineShape, curveHeight],
+  );
+  const targetRouteDistance = useMemo(
+    () => turf.length(targetRoute),
+    [targetRoute],
+  );
   const cameraRoute = targetRoute;
   const cameraRouteDistance = targetRouteDistance;
   const cityMarkers = useMemo(
@@ -321,7 +347,12 @@ export const RouteMap = ({
       });
 
       mapInstance.jumpTo(
-        getCameraOptions(mapInstance, 0, cameraAltitudeMeters.start, cameraLatitudeOffset.start),
+        getCameraOptions(
+          mapInstance,
+          0,
+          cameraAltitudeMeters.start,
+          cameraLatitudeOffset.start,
+        ),
       );
       mapInstance.once("idle", () => {
         waitingForIdleRef.current = false;
@@ -352,14 +383,28 @@ export const RouteMap = ({
     }
 
     map.setPaintProperty("trace-line", "line-color", lineColor);
-    map.setPaintProperty("trace-line", "line-dasharray", lineDasharray(lineStyle));
+    map.setPaintProperty(
+      "trace-line",
+      "line-dasharray",
+      lineDasharray(lineStyle),
+    );
 
-    const citySource = map.getSource("city-markers") as GeoJSONSource | undefined;
+    const citySource = map.getSource("city-markers") as
+      | GeoJSONSource
+      | undefined;
     citySource?.setData(cityMarkers);
 
-    map.setLayoutProperty("vehicle-icon", "visibility", vehicle === "none" ? "none" : "visible");
+    map.setLayoutProperty(
+      "vehicle-icon",
+      "visibility",
+      vehicle === "none" ? "none" : "visible",
+    );
     if (vehicle !== "none") {
-      map.setLayoutProperty("vehicle-icon", "icon-image", vehicleIconId(vehicle));
+      map.setLayoutProperty(
+        "vehicle-icon",
+        "icon-image",
+        vehicleIconId(vehicle),
+      );
     }
   }, [map, lineColor, lineStyle, cityMarkers, vehicle]);
 
@@ -369,10 +414,15 @@ export const RouteMap = ({
     }
 
     const handle = delayRender("Rendering MapLibre frame");
-    const timelineProgress = interpolate(frame, [0, durationInFrames - 1], [0, 1], {
-      extrapolateLeft: "clamp",
-      extrapolateRight: "clamp",
-    });
+    const timelineProgress = interpolate(
+      frame,
+      [0, durationInFrames - 1],
+      [0, 1],
+      {
+        extrapolateLeft: "clamp",
+        extrapolateRight: "clamp",
+      },
+    );
     const travelProgress = interpolate(timelineProgress, [0.12, 0.88], [0, 1], {
       extrapolateLeft: "clamp",
       extrapolateRight: "clamp",
@@ -413,7 +463,9 @@ export const RouteMap = ({
 
     trace?.setData(getPartialTargetRoute(travelProgress));
     vehicleSource?.setData(getVehicleFeature(travelProgress));
-    map.jumpTo(getCameraOptions(map, travelProgress, altitudeMeters, latitudeOffset));
+    map.jumpTo(
+      getCameraOptions(map, travelProgress, altitudeMeters, latitudeOffset),
+    );
 
     waitingForIdleRef.current = true;
     map.once("idle", () => {
