@@ -1,6 +1,7 @@
 import { zColor } from "@remotion/zod-types";
 import { z } from "zod";
 import { MAP_STYLE_IDS } from "./map-styles";
+import { COUNTRY_IDS } from "../lib/countries";
 
 const lngLat = z.tuple([
   z.number().min(-180).max(180).step(0.0001),
@@ -78,6 +79,35 @@ export const routeMapCompositions = [
 
 export type RouteMapCompositionId = (typeof routeMapCompositions)[number]["id"];
 
+export const countryHighlightSchema = z.object({
+  countryId: z
+    .string()
+    .refine((id) => COUNTRY_IDS.has(id), "Choose a supported country"),
+  mapStyle: z.enum(MAP_STYLE_IDS).default("classic"),
+  displayName: z.string().trim().min(1).max(80),
+  subtitle: z.string().max(120).default(""),
+  highlightColor: zColor(),
+  framing: z.enum(["all", "mainland"]).default("all"),
+});
+
+export type CountryHighlightProps = z.infer<typeof countryHighlightSchema>;
+
+export const countryHighlightDefaultProps: CountryHighlightProps = {
+  countryId: "LKA",
+  mapStyle: "classic",
+  displayName: "Sri Lanka",
+  subtitle: "",
+  highlightColor: "#e8593c",
+  framing: "all",
+};
+
+export const mapAnimationSchema = z.union([
+  countryHighlightSchema,
+  routeMapSchema,
+]);
+export type MapAnimationProps = z.infer<typeof mapAnimationSchema>;
+export type MapCompositionId = RouteMapCompositionId | "CountryHighlight";
+
 // Scale factors relative to the 1920x1080 composition.
 export const RESOLUTION_SCALES = {
   "720p": 2 / 3,
@@ -103,13 +133,28 @@ export const routeMapRenderSchema = routeMapSchema.extend({
   fps: Fps.optional(),
 });
 export type RouteMapRenderProps = z.infer<typeof routeMapRenderSchema>;
-
-export const RenderRequest = z.object({
-  id: z.string(),
-  inputProps: routeMapSchema,
-  resolution: Resolution,
-  fps: Fps,
+export const countryHighlightRenderSchema = countryHighlightSchema.extend({
+  fps: Fps.optional(),
 });
+export type MapAnimationRenderProps = MapAnimationProps & { fps?: Fps };
+
+export const RenderRequest = z
+  .object({
+    id: z.enum(["CountryToCountry", "CityToCity", "CountryHighlight"]),
+    inputProps: mapAnimationSchema,
+    resolution: Resolution,
+    fps: Fps,
+  })
+  .refine(
+    ({ id, inputProps }) => {
+      const isHighlight = "countryId" in inputProps;
+      return (id === "CountryHighlight") === isHighlight;
+    },
+    {
+      message: "Animation settings do not match the selected composition",
+      path: ["inputProps"],
+    },
+  );
 
 export const ProgressRequest = z.object({
   bucketName: z.string(),

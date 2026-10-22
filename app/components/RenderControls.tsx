@@ -11,7 +11,8 @@ import {
   Fps,
   FPS_OPTIONS,
   Resolution,
-  RouteMapProps,
+  MapAnimationProps,
+  MapCompositionId,
 } from "~/remotion/schemata";
 import { useState } from "react";
 
@@ -28,8 +29,8 @@ const resolutions = [
 ] as const;
 
 export const RenderControls: React.FC<{
-  compositionId: string;
-  inputProps: RouteMapProps;
+  compositionId: MapCompositionId;
+  inputProps: MapAnimationProps;
   cloudRenderEnabled: boolean;
   licenseKey: string | null;
   fps: Fps;

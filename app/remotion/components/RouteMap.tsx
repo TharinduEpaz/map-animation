@@ -11,8 +11,6 @@ import {
 import { type RouteMapProps } from "../schemata";
 import {
   addRouteLayers,
-  createMap,
-  startWorkerTicker,
   updateRouteAppearance,
   updateRouteFrame,
 } from "../route-map/map-scene";
@@ -20,6 +18,8 @@ import { getRouteAnimation } from "../route-map/route-animation";
 import { createCityMarkers, createRoute } from "../route-map/route-geometry";
 import { loadVehicleImages } from "../route-map/vehicle-icons";
 import { MAP_THEMES } from "../map-styles";
+import { createMap, startWorkerTicker } from "../map-runtime";
+import { MapAttribution } from "./MapAttribution";
 
 // A new basemap gets its own scene, including route sources and vehicle images.
 // Keep the Player mounted so a style change preserves its current frame.
@@ -190,34 +190,7 @@ const RouteMapScene = (props: RouteMapProps) => {
         data-map-ready={Boolean(map)}
         style={{ height, position: "absolute", width }}
       />
-      <div
-        style={{
-          position: "absolute",
-          right: 18,
-          bottom: 14,
-          padding: "6px 10px",
-          borderRadius: 4,
-          fontFamily: "sans-serif",
-          fontSize: 18,
-          color: MAP_THEMES[mapStyle].ink,
-          backgroundColor: MAP_THEMES[mapStyle].halo,
-        }}
-      >
-        <a href="https://openfreemap.org/" style={{ color: "inherit" }}>
-          OpenFreeMap
-        </a>
-        {" · "}
-        <a href="https://openmaptiles.org/" style={{ color: "inherit" }}>
-          © OpenMapTiles
-        </a>
-        {" · Data from "}
-        <a
-          href="https://www.openstreetmap.org/copyright"
-          style={{ color: "inherit" }}
-        >
-          OpenStreetMap
-        </a>
-      </div>
+      <MapAttribution mapStyle={mapStyle} />
       {loadError ? (
         <AbsoluteFill
           style={{

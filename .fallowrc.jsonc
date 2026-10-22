@@ -1,0 +1,6 @@
+{
+  // These are executed by Remotion and the deployment command, not imported by the app.
+  "entry": ["app/remotion/index.ts", "deploy.mjs"],
+  // @remotion/eslint-config-flat imports this plugin from the project's installation.
+  "ignoreDependencies": ["@remotion/eslint-plugin"],
+}

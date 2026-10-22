@@ -1,7 +1,7 @@
 import { renderMediaOnWeb } from "@remotion/web-renderer";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { getProgress, renderVideo } from "./api";
-import { RouteMap } from "~/remotion/components/RouteMap";
+import { MapAnimation } from "~/remotion/components/MapAnimation";
 import {
   COMPOSITION_HEIGHT,
   COMPOSITION_WIDTH,
@@ -11,8 +11,10 @@ import {
   Fps,
   Resolution,
   RESOLUTION_SCALES,
-  RouteMapProps,
+  MapAnimationProps,
+  MapCompositionId,
   routeMapSchema,
+  countryHighlightSchema,
 } from "~/remotion/schemata";
 
 export type RenderMode = "browser" | "lambda";
@@ -47,8 +49,8 @@ const wait = async (milliSeconds: number) => {
 };
 
 type RenderArgs = {
-  id: string;
-  inputProps: RouteMapProps;
+  id: MapCompositionId;
+  inputProps: MapAnimationProps;
   resolution: Resolution;
   fps: Fps;
   licenseKey: string | null;
@@ -69,14 +71,14 @@ const renderInBrowser = async ({
   const { getBlob } = await renderMediaOnWeb({
     composition: {
       id,
-      component: RouteMap,
+      component: MapAnimation,
       width: COMPOSITION_WIDTH,
       height: COMPOSITION_HEIGHT,
       fps,
       durationInFrames: routeMapDurationInFrames(fps),
       defaultProps: inputProps,
     },
-    schema: routeMapSchema,
+    schema: "countryId" in inputProps ? countryHighlightSchema : routeMapSchema,
     inputProps,
     scale: RESOLUTION_SCALES[resolution],
     container: "mp4",
@@ -132,8 +134,8 @@ export const useRendering = ({
   licenseKey,
 }: {
   mode: RenderMode;
-  id: string;
-  inputProps: RouteMapProps;
+  id: MapCompositionId;
+  inputProps: MapAnimationProps;
   resolution: Resolution;
   fps: Fps;
   licenseKey: string | null;

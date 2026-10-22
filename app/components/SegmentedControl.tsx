@@ -14,7 +14,7 @@ export function SegmentedControl<T extends string | number>({
   return (
     <div
       role="tablist"
-      className="inline-flex gap-1 rounded-geist border border-unfocused-border-color p-1"
+      className="inline-flex flex-wrap gap-1 rounded-geist border border-unfocused-border-color p-1"
     >
       {options.map((option) => {
         const selected = option.value === value;

@@ -8,7 +8,9 @@ import {
   routeMapDurationInFrames,
 } from "./remotion/constants.mjs";
 import "./app.css";
-import { RouteMap } from "./remotion/components/RouteMap";
+import { MapAnimation } from "./remotion/components/MapAnimation";
+import { CountryHighlightControls } from "./components/CountryHighlightControls";
+import { getCountryName } from "./lib/countries";
 import { SegmentedControl } from "./components/SegmentedControl";
 import { RenderControls } from "./components/RenderControls";
 import { Spacing } from "./components/Spacing";
@@ -19,6 +21,10 @@ import { MAP_THEMES, type MapStyleId } from "./remotion/map-styles";
 import type { Place } from "./lib/geocode";
 import {
   routeMapCompositions,
+  countryHighlightDefaultProps,
+  type CountryHighlightProps,
+  type MapAnimationProps,
+  type MapCompositionId,
   type Fps,
   type RouteMapCompositionId,
   type RouteMapProps,
@@ -48,37 +54,52 @@ export const loader = () => ({
 export default function Index() {
   const { cloudRenderEnabled, remotionLicenseKey, buyMeACoffeeUrl } =
     useLoaderData<typeof loader>();
-  const [compositionId, setCompositionId] = useState<RouteMapCompositionId>(
+  const [compositionId, setCompositionId] = useState<MapCompositionId>(
     routeMapCompositions[0].id,
   );
   const [fps, setFps] = useState<Fps>(COMPOSITION_FPS);
   const [mapStyle, setMapStyle] = useState<MapStyleId>("classic");
+  const [highlight, setHighlight] = useState<CountryHighlightProps>(
+    countryHighlightDefaultProps,
+  );
 
   const [route, setRoute] = useState<RouteEnds>(() =>
     defaultRoute(routeMapCompositions[0].id),
   );
 
-  const changeComposition = (id: RouteMapCompositionId) => {
+  const changeComposition = (id: MapCompositionId) => {
     setCompositionId(id);
-    setRoute(defaultRoute(id));
+    if (id !== "CountryHighlight") setRoute(defaultRoute(id));
     setRouteError(null);
   };
   const [routeError, setRouteError] = useState<string | null>(null);
 
   const composition = useMemo(
-    () => routeMapCompositions.find((c) => c.id === compositionId)!,
+    () =>
+      routeMapCompositions.find((c) => c.id === compositionId) ??
+      routeMapCompositions[0],
     [compositionId],
   );
 
-  const inputProps: RouteMapProps = useMemo(
-    () => ({
-      ...composition.defaultProps,
-      ...route,
-      mapStyle,
-      lineColor:
-        MAP_THEMES[mapStyle].routeColor ?? composition.defaultProps.lineColor,
-    }),
-    [composition, route, mapStyle],
+  const inputProps: MapAnimationProps = useMemo(
+    () =>
+      compositionId === "CountryHighlight"
+        ? {
+            ...highlight,
+            mapStyle,
+            displayName:
+              highlight.displayName.trim() ||
+              getCountryName(highlight.countryId),
+          }
+        : {
+            ...composition.defaultProps,
+            ...route,
+            mapStyle,
+            lineColor:
+              MAP_THEMES[mapStyle].routeColor ??
+              composition.defaultProps.lineColor,
+          },
+    [composition, compositionId, route, mapStyle, highlight],
   );
 
   const selectEnd = (end: "from" | "to", place: Place) => {
@@ -105,38 +126,45 @@ export default function Index() {
       <div className="max-w-screen-md m-auto mb-5">
         <div className="mt-10 mb-5">
           <SegmentedControl
-            options={routeMapCompositions.map((c) => ({
-              value: c.id,
-              label: c.label,
-            }))}
+            options={[
+              ...routeMapCompositions.map((c) => ({
+                value: c.id,
+                label: c.label,
+              })),
+              { value: "CountryHighlight", label: "Country Highlight" },
+            ]}
             value={compositionId}
             onChange={changeComposition}
           />
         </div>
-        <div className="mb-5">
-          <div className="grid gap-3 sm:grid-cols-2">
-            <LocationSearch
-              label="Start"
-              kind={composition.searchKind}
-              value={route.fromLabel}
-              onSelect={(place) => selectEnd("from", place)}
-            />
-            <LocationSearch
-              label="End"
-              kind={composition.searchKind}
-              value={route.toLabel}
-              onSelect={(place) => selectEnd("to", place)}
-            />
+        {compositionId === "CountryHighlight" ? (
+          <CountryHighlightControls value={highlight} onChange={setHighlight} />
+        ) : (
+          <div className="mb-5">
+            <div className="grid gap-3 sm:grid-cols-2">
+              <LocationSearch
+                label="Start"
+                kind={composition.searchKind}
+                value={route.fromLabel}
+                onSelect={(place) => selectEnd("from", place)}
+              />
+              <LocationSearch
+                label="End"
+                kind={composition.searchKind}
+                value={route.toLabel}
+                onSelect={(place) => selectEnd("to", place)}
+              />
+            </div>
+            {routeError ? (
+              <p className="mt-2 text-sm text-geist-error">{routeError}</p>
+            ) : null}
           </div>
-          {routeError ? (
-            <p className="mt-2 text-sm text-geist-error">{routeError}</p>
-          ) : null}
-        </div>
+        )}
         <MapStylePicker value={mapStyle} onChange={setMapStyle} />
         <div className="overflow-hidden rounded-geist shadow-[0_0_200px_rgba(0,0,0,0.15)] mb-10">
           <Player
-            key={`${composition.id}-${fps}`}
-            component={RouteMap}
+            key={`${compositionId}-${fps}`}
+            component={MapAnimation}
             inputProps={inputProps}
             durationInFrames={routeMapDurationInFrames(fps)}
             fps={fps}
@@ -152,7 +180,8 @@ export default function Index() {
           />
         </div>
         <RenderControls
-          compositionId={composition.id}
+          key={compositionId}
+          compositionId={compositionId}
           inputProps={inputProps}
           cloudRenderEnabled={cloudRenderEnabled}
           licenseKey={remotionLicenseKey}

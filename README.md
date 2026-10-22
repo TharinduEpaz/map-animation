@@ -48,6 +48,27 @@ in the video.
 After changing the video composition, redeploy the Remotion site before using
 cloud rendering so it matches the editor.
 
+## Country Highlight
+
+Select **Country Highlight**, choose a country or territory, and press Play.
+The eight-second animation moves closer, fades in the selected territory and
+border, reveals its name and optional subtitle, then holds the finished view.
+You can edit the highlight color and use any of the five map styles.
+**Entire country** frames all islands and territories; **Largest landmass** is
+useful when distant territories would otherwise make the main country too small.
+
+Country boundaries are bundled from Natural Earth (242 entries). See
+[`public/countries/README.md`](public/countries/README.md) for the pinned source,
+license, and regeneration instructions. These generalized boundaries can differ
+slightly from the detailed basemap. Browser export works locally; redeploy the
+Remotion site to make the new `CountryHighlight` composition available on AWS.
+
+Run the boundary, animation, and request-validation checks with:
+
+```sh
+node --import tsx --test tests/country-highlight.test.ts
+```
+
 ## Edit the video
 
 Start the Remotion Preview (the editor interface) using:
