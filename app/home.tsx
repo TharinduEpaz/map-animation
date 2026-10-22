@@ -14,6 +14,8 @@ import { RenderControls } from "./components/RenderControls";
 import { Spacing } from "./components/Spacing";
 import { LocationSearch } from "./components/LocationSearch";
 import { SiteHeader } from "./components/SiteHeader";
+import { MapStylePicker } from "./components/MapStylePicker";
+import { MAP_THEMES, type MapStyleId } from "./remotion/map-styles";
 import type { Place } from "./lib/geocode";
 import {
   routeMapCompositions,
@@ -50,6 +52,7 @@ export default function Index() {
     routeMapCompositions[0].id,
   );
   const [fps, setFps] = useState<Fps>(COMPOSITION_FPS);
+  const [mapStyle, setMapStyle] = useState<MapStyleId>("classic");
 
   const [route, setRoute] = useState<RouteEnds>(() =>
     defaultRoute(routeMapCompositions[0].id),
@@ -68,8 +71,14 @@ export default function Index() {
   );
 
   const inputProps: RouteMapProps = useMemo(
-    () => ({ ...composition.defaultProps, ...route }),
-    [composition, route],
+    () => ({
+      ...composition.defaultProps,
+      ...route,
+      mapStyle,
+      lineColor:
+        MAP_THEMES[mapStyle].routeColor ?? composition.defaultProps.lineColor,
+    }),
+    [composition, route, mapStyle],
   );
 
   const selectEnd = (end: "from" | "to", place: Place) => {
@@ -122,10 +131,8 @@ export default function Index() {
           {routeError ? (
             <p className="mt-2 text-sm text-geist-error">{routeError}</p>
           ) : null}
-          <p className="mt-2 text-xs text-subtitle">
-             © OpenStreetMap 
-          </p>
         </div>
+        <MapStylePicker value={mapStyle} onChange={setMapStyle} />
         <div className="overflow-hidden rounded-geist shadow-[0_0_200px_rgba(0,0,0,0.15)] mb-10">
           <Player
             key={`${composition.id}-${fps}`}

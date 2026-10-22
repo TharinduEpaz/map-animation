@@ -1,13 +1,6 @@
 import { zColor } from "@remotion/zod-types";
 import { z } from "zod";
-
-export const CompositionProps = z.object({
-  title: z.string(),
-});
-
-export const defaultMyCompProps: z.infer<typeof CompositionProps> = {
-  title: "React Router and Remotion",
-};
+import { MAP_STYLE_IDS } from "./map-styles";
 
 const lngLat = z.tuple([
   z.number().min(-180).max(180).step(0.0001),
@@ -15,6 +8,7 @@ const lngLat = z.tuple([
 ]);
 
 export const routeMapSchema = z.object({
+  mapStyle: z.enum(MAP_STYLE_IDS).default("classic"),
   from: lngLat,
   to: lngLat,
   fromLabel: z.string(),
@@ -42,6 +36,7 @@ export const routeMapCompositions = [
     label: "Country to Country",
     searchKind: "country",
     defaultProps: {
+      mapStyle: "classic",
       from: [-74.006, 40.7128],
       to: [-0.1276, 51.5072],
       fromLabel: "United States",
@@ -60,6 +55,7 @@ export const routeMapCompositions = [
     label: "Between Cities",
     searchKind: "city",
     defaultProps: {
+      mapStyle: "classic",
       from: [79.8627, 6.9271],
       to: [80.8917, 6.4372],
       fromLabel: "Colombo",
@@ -90,10 +86,10 @@ export const RESOLUTION_SCALES = {
   "4k": 2,
 } as const;
 
-export const Resolution = z.enum(["720p", "1080p", "2k", "4k"]);
+const Resolution = z.enum(["720p", "1080p", "2k", "4k"]);
 export type Resolution = z.infer<typeof Resolution>;
 
-export const Fps = z.union([z.literal(24), z.literal(30), z.literal(60)]);
+const Fps = z.union([z.literal(24), z.literal(30), z.literal(60)]);
 export type Fps = z.infer<typeof Fps>;
 
 export const FPS_OPTIONS = [

@@ -5,13 +5,13 @@ import {
   AbsoluteFill,
   useCurrentFrame,
   useDelayRender,
+  useRemotionEnvironment,
   useVideoConfig,
 } from "remotion";
 import { type RouteMapProps } from "../schemata";
 import {
   addRouteLayers,
   createMap,
-  getCameraOptions,
   startWorkerTicker,
   updateRouteAppearance,
   updateRouteFrame,
@@ -19,9 +19,17 @@ import {
 import { getRouteAnimation } from "../route-map/route-animation";
 import { createCityMarkers, createRoute } from "../route-map/route-geometry";
 import { loadVehicleImages } from "../route-map/vehicle-icons";
+import { MAP_THEMES } from "../map-styles";
 
-export const RouteMap = (props: RouteMapProps) => {
+// A new basemap gets its own scene, including route sources and vehicle images.
+// Keep the Player mounted so a style change preserves its current frame.
+export const RouteMap = (props: RouteMapProps) => (
+  <RouteMapScene key={props.mapStyle ?? "classic"} {...props} />
+);
+
+const RouteMapScene = (props: RouteMapProps) => {
   const {
+    mapStyle = "classic",
     from,
     to,
     fromLabel,
@@ -37,8 +45,10 @@ export const RouteMap = (props: RouteMapProps) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const frame = useCurrentFrame();
   const { durationInFrames, height, width } = useVideoConfig();
-  const { delayRender, continueRender } = useDelayRender();
+  const { delayRender, continueRender, cancelRender } = useDelayRender();
+  const { isRendering, isClientSideRendering } = useRemotionEnvironment();
   const [map, setMap] = useState<Map | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [loadingHandle] = useState(() => delayRender("Loading MapLibre map"));
   const waitingForIdleRef = useRef(true);
 
@@ -51,34 +61,63 @@ export const RouteMap = (props: RouteMapProps) => {
     [from, to, fromLabel, toLabel],
   );
   // Initialize the map once. Later prop changes update the existing sources/layers.
-  const initialScene = useRef({ route, cityMarkers, props });
+  const initialScene = useRef({
+    route,
+    cityMarkers,
+    props,
+    frame,
+    durationInFrames,
+  });
 
   useEffect(() => {
     if (!containerRef.current) return;
 
-    const { route, cityMarkers, props } = initialScene.current;
-    const mapInstance = createMap(containerRef.current, props.from);
+    const { route, cityMarkers, props, frame, durationInFrames } =
+      initialScene.current;
+    const mapInstance = createMap(
+      containerRef.current,
+      props.from,
+      props.mapStyle ?? "classic",
+    );
     let removed = false;
 
-    mapInstance.on("load", async () => {
-      const images = await loadVehicleImages();
+    const fail = (error: unknown) => {
       if (removed) return;
+      const message = `Unable to load the ${MAP_THEMES[props.mapStyle ?? "classic"].label} map. Check your connection and try another style.`;
+      setLoadError(message);
+      if (isRendering || isClientSideRendering) {
+        cancelRender(new Error(message, { cause: error }));
+      } else {
+        continueRender(loadingHandle);
+      }
+    };
+    mapInstance.on("error", (event) => fail(event.error));
 
-      addRouteLayers(mapInstance, route, cityMarkers, props, images);
-      mapInstance.jumpTo(
-        getCameraOptions(
+    mapInstance.on("load", async () => {
+      try {
+        const images = await loadVehicleImages();
+        if (removed) return;
+
+        addRouteLayers(mapInstance, route, cityMarkers, props, images);
+        updateRouteFrame(
           mapInstance,
           route,
-          0,
-          props.cameraAltitudeMeters.start,
-          props.cameraLatitudeOffset.start,
-        ),
-      );
-      mapInstance.once("idle", () => {
-        waitingForIdleRef.current = false;
-        setMap(mapInstance);
-        continueRender(loadingHandle);
-      });
+          getRouteAnimation(
+            frame,
+            durationInFrames,
+            props.cameraAltitudeMeters,
+            props.cameraLatitudeOffset,
+          ),
+        );
+        mapInstance.once("idle", () => {
+          if (removed) return;
+          waitingForIdleRef.current = false;
+          setMap(mapInstance);
+          continueRender(loadingHandle);
+        });
+      } catch (error) {
+        fail(error);
+      }
     });
 
     // Hidden tabs pause animation frames; worker ticks let MapLibre reach idle.
@@ -90,8 +129,16 @@ export const RouteMap = (props: RouteMapProps) => {
       removed = true;
       stopTicker();
       mapInstance.remove();
+      // Style changes can unmount a scene before the tiles finish loading.
+      continueRender(loadingHandle);
     };
-  }, [continueRender, loadingHandle]);
+  }, [
+    continueRender,
+    cancelRender,
+    loadingHandle,
+    isRendering,
+    isClientSideRendering,
+  ]);
 
   useEffect(() => {
     if (!map) return;
@@ -111,12 +158,17 @@ export const RouteMap = (props: RouteMapProps) => {
     updateRouteFrame(map, route, animation);
 
     waitingForIdleRef.current = true;
-    map.once("idle", () => {
+    const onIdle = () => {
       waitingForIdleRef.current = false;
       continueRender(handle);
-    });
+    };
+    map.once("idle", onIdle);
     // Repaint even when the camera is unchanged, so each frame releases its handle.
     map.triggerRepaint();
+    return () => {
+      map.off("idle", onIdle);
+      continueRender(handle);
+    };
   }, [
     map,
     route,
@@ -129,8 +181,58 @@ export const RouteMap = (props: RouteMapProps) => {
   ]);
 
   return (
-    <AbsoluteFill style={{ backgroundColor: "#e8eef3", borderRadius: 19 }}>
-      <div ref={containerRef} style={{ height, position: "absolute", width }} />
+    <AbsoluteFill
+      style={{ backgroundColor: MAP_THEMES[mapStyle].land, borderRadius: 19 }}
+    >
+      <div
+        ref={containerRef}
+        data-map-style={mapStyle}
+        data-map-ready={Boolean(map)}
+        style={{ height, position: "absolute", width }}
+      />
+      <div
+        style={{
+          position: "absolute",
+          right: 18,
+          bottom: 14,
+          padding: "6px 10px",
+          borderRadius: 4,
+          fontFamily: "sans-serif",
+          fontSize: 18,
+          color: MAP_THEMES[mapStyle].ink,
+          backgroundColor: MAP_THEMES[mapStyle].halo,
+        }}
+      >
+        <a href="https://openfreemap.org/" style={{ color: "inherit" }}>
+          OpenFreeMap
+        </a>
+        {" · "}
+        <a href="https://openmaptiles.org/" style={{ color: "inherit" }}>
+          © OpenMapTiles
+        </a>
+        {" · Data from "}
+        <a
+          href="https://www.openstreetmap.org/copyright"
+          style={{ color: "inherit" }}
+        >
+          OpenStreetMap
+        </a>
+      </div>
+      {loadError ? (
+        <AbsoluteFill
+          style={{
+            justifyContent: "center",
+            alignItems: "center",
+            padding: 100,
+            backgroundColor: MAP_THEMES[mapStyle].land,
+            color: MAP_THEMES[mapStyle].ink,
+            fontSize: 32,
+            textAlign: "center",
+          }}
+        >
+          <p role="alert">{loadError}</p>
+        </AbsoluteFill>
+      ) : null}
     </AbsoluteFill>
   );
 };

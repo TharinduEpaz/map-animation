@@ -5,18 +5,12 @@ import { Spinner } from "./Spinner";
 
 type Status = "idle" | "loading" | "done" | "error";
 
-export const LocationSearch: React.FC<{
-  label: string;
-  value: string;
-  kind: PlaceKind;
-  onSelect: (place: Place) => void;
-  disabled?: boolean;
-}> = ({ label, value, kind, onSelect, disabled }) => {
-  const id = useId();
-  const inputId = `${id}-input`;
-  const listId = `${id}-list`;
-  const [query, setQuery] = useState("");
-  const [editing, setEditing] = useState(false);
+// Keep request cancellation and debouncing separate from combobox interaction.
+const useLocationResults = (
+  query: string,
+  kind: PlaceKind,
+  editing: boolean,
+) => {
   const [results, setResults] = useState<Place[]>([]);
   const [status, setStatus] = useState<Status>("idle");
   const [activeIndex, setActiveIndex] = useState(-1);
@@ -51,6 +45,75 @@ export const LocationSearch: React.FC<{
       controller.abort();
     };
   }, [trimmed, kind, editing]);
+
+  return { results, status, activeIndex, setActiveIndex };
+};
+
+const SearchResults = ({
+  id,
+  results,
+  status,
+  activeIndex,
+  onSelect,
+  onActiveIndexChange,
+}: {
+  id: string;
+  results: Place[];
+  status: Status;
+  activeIndex: number;
+  onSelect: (place: Place) => void;
+  onActiveIndexChange: (index: number) => void;
+}) => {
+  return status === "error" ? (
+    <li className="px-3 py-2 text-sm text-geist-error">
+      Search failed. Check your connection and try again.
+    </li>
+  ) : results.length === 0 ? (
+    <li className="px-3 py-2 text-sm text-subtitle">No places found</li>
+  ) : (
+    results.map((place, index) => (
+      <li
+        key={place.id}
+        id={`${id}-option-${index}`}
+        role="option"
+        aria-selected={index === activeIndex}
+        // mousedown + preventDefault keeps focus, so blur doesn't close the list first
+        onMouseDown={(e) => {
+          e.preventDefault();
+          onSelect(place);
+        }}
+        onMouseEnter={() => onActiveIndexChange(index)}
+        className={cn(
+          "cursor-pointer px-3 py-2",
+          index === activeIndex && "bg-unfocused-border-color",
+        )}
+      >
+        <div className="text-sm text-foreground">{place.name}</div>
+        {place.detail ? (
+          <div className="text-xs text-subtitle">{place.detail}</div>
+        ) : null}
+      </li>
+    ))
+  );
+};
+
+export const LocationSearch: React.FC<{
+  label: string;
+  value: string;
+  kind: PlaceKind;
+  onSelect: (place: Place) => void;
+  disabled?: boolean;
+}> = ({ label, value, kind, onSelect, disabled }) => {
+  const id = useId();
+  const inputId = `${id}-input`;
+  const listId = `${id}-list`;
+  const [query, setQuery] = useState("");
+  const [editing, setEditing] = useState(false);
+  const { results, status, activeIndex, setActiveIndex } = useLocationResults(
+    query,
+    kind,
+    editing,
+  );
 
   const close = () => {
     setEditing(false);
@@ -103,7 +166,9 @@ export const LocationSearch: React.FC<{
         aria-expanded={showList}
         aria-controls={listId}
         aria-activedescendant={
-          showList && activeIndex >= 0 ? `${id}-option-${activeIndex}` : undefined
+          showList && activeIndex >= 0
+            ? `${id}-option-${activeIndex}`
+            : undefined
         }
         autoComplete="off"
         spellCheck={false}
@@ -131,37 +196,14 @@ export const LocationSearch: React.FC<{
           aria-label={`${label} suggestions`}
           className="absolute z-10 mt-1 max-h-72 w-full overflow-auto rounded-geist border border-unfocused-border-color bg-background py-1 shadow-lg"
         >
-          {status === "error" ? (
-            <li className="px-3 py-2 text-sm text-geist-error">
-              Search failed. Check your connection and try again.
-            </li>
-          ) : results.length === 0 ? (
-            <li className="px-3 py-2 text-sm text-subtitle">No places found</li>
-          ) : (
-            results.map((place, index) => (
-              <li
-                key={place.id}
-                id={`${id}-option-${index}`}
-                role="option"
-                aria-selected={index === activeIndex}
-                // mousedown + preventDefault keeps focus, so blur doesn't close the list first
-                onMouseDown={(e) => {
-                  e.preventDefault();
-                  select(place);
-                }}
-                onMouseEnter={() => setActiveIndex(index)}
-                className={cn(
-                  "cursor-pointer px-3 py-2",
-                  index === activeIndex && "bg-unfocused-border-color",
-                )}
-              >
-                <div className="text-sm text-foreground">{place.name}</div>
-                {place.detail ? (
-                  <div className="text-xs text-subtitle">{place.detail}</div>
-                ) : null}
-              </li>
-            ))
-          )}
+          <SearchResults
+            id={id}
+            results={results}
+            status={status}
+            activeIndex={activeIndex}
+            onSelect={select}
+            onActiveIndexChange={setActiveIndex}
+          />
         </ul>
       ) : null}
     </div>

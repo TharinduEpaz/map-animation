@@ -6,7 +6,7 @@ import {
 } from "~/remotion/schemata";
 import { RenderResponse } from "./types";
 
-export type ApiResponse<Res> =
+type ApiResponse<Res> =
   | {
       type: "error";
       message: string;

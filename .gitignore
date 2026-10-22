@@ -5,7 +5,6 @@ node_modules
 /public/build
 .env
 /out
-.nvmrc
 .react-router/
 
 .DS_Store

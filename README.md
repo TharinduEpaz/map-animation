@@ -16,6 +16,13 @@ It lets you render a video from a React Router app with AWS Lambda.
 
 Use Node.js 22.22.0 or newer.
 
+If you use nvm, install and select the project's Node version before running commands:
+
+```sh
+nvm install
+nvm use
+```
+
 Install dependencies using
 
 <!-- create-video will replace this with the package manager specific command -->
@@ -31,6 +38,15 @@ Run the example app using:
 ```
 npm run dev
 ```
+
+Choose **Classic**, **Vintage**, **Minimal**, **Dark**, or **Bright** above the
+preview. The selected style is included in browser and cloud exports. Vintage
+uses a custom parchment palette over current OpenStreetMap geography. All five
+styles use OpenFreeMap and need no additional API key. Map credits are included
+in the video.
+
+After changing the video composition, redeploy the Remotion site before using
+cloud rendering so it matches the editor.
 
 ## Edit the video
 

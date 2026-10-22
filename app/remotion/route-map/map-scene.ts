@@ -1,6 +1,8 @@
 import * as maplibregl from "maplibre-gl";
 import { type GeoJSONSource, type Map } from "maplibre-gl";
-import { INTER_LABEL_FONT, interFontFaces } from "../map-fonts";
+import { INTER_LABEL_FONT } from "../map-fonts";
+import { MAP_THEMES, type MapStyleId } from "../map-styles";
+import { prepareMapStyle } from "./map-style";
 import { type RouteMapProps } from "../schemata";
 import { type RouteAnimation } from "./route-animation";
 import {
@@ -44,20 +46,22 @@ export const startWorkerTicker = (intervalMs: number, onTick: () => void) => {
   };
 };
 
+let mapWorkerUrl: string | undefined;
+
 export const createMap = (
   container: HTMLDivElement,
   center: RouteMapProps["from"],
+  mapStyle: MapStyleId,
 ) => {
-  maplibregl.setWorkerUrl(
-    URL.createObjectURL(
-      new Blob(
-        [
-          `import "https://unpkg.com/maplibre-gl@${maplibregl.getVersion()}/dist/maplibre-gl-worker.mjs";`,
-        ],
-        { type: "text/javascript" },
-      ),
+  mapWorkerUrl ??= URL.createObjectURL(
+    new Blob(
+      [
+        `import "https://unpkg.com/maplibre-gl@${maplibregl.getVersion()}/dist/maplibre-gl-worker.mjs";`,
+      ],
+      { type: "text/javascript" },
     ),
   );
+  maplibregl.setWorkerUrl(mapWorkerUrl);
 
   const map = new maplibregl.Map({
     container,
@@ -68,12 +72,12 @@ export const createMap = (
     fadeDuration: 0,
     canvasContextAttributes: { preserveDrawingBuffer: true },
   });
-  map.setStyle("https://tiles.openfreemap.org/styles/liberty", {
-    transformStyle: (_previous, next) => ({
-      ...next,
-      "font-faces": interFontFaces,
-    }),
-  });
+  map.setStyle(
+    `https://tiles.openfreemap.org/styles/${MAP_THEMES[mapStyle].baseStyle}`,
+    {
+      transformStyle: (_previous, next) => prepareMapStyle(next, mapStyle),
+    },
+  );
   return map;
 };
 
@@ -83,10 +87,11 @@ export const addRouteLayers = (
   mapInstance: Map,
   route: RouteGeometry,
   cityMarkers: CityMarkers,
-  { lineColor, lineStyle, vehicle }: RouteMapProps,
+  { lineColor, lineStyle, vehicle, mapStyle = "classic" }: RouteMapProps,
   images: Awaited<ReturnType<typeof loadVehicleImages>>,
 ) => {
   const dasharray = lineDasharray(lineStyle);
+  const theme = MAP_THEMES[mapStyle];
   mapInstance.addImage("plane-icon", images.plane, { pixelRatio: 2 });
   mapInstance.addImage("car-icon", images.car);
 
@@ -120,9 +125,9 @@ export const addRouteLayers = (
     type: "circle",
     source: "city-markers",
     paint: {
-      "circle-color": "#111111",
+      "circle-color": theme.ink,
       "circle-radius": 12,
-      "circle-stroke-color": "#ffffff",
+      "circle-stroke-color": theme.halo,
       "circle-stroke-width": 4,
     },
   });
@@ -140,8 +145,8 @@ export const addRouteLayers = (
       "text-size": 28,
     },
     paint: {
-      "text-color": "#111111",
-      "text-halo-color": "#ffffff",
+      "text-color": theme.ink,
+      "text-halo-color": theme.halo,
       "text-halo-width": 3,
     },
   });
